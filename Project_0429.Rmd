@@ -28,13 +28,14 @@ library(tidyr)
 library(rsample) 
 library(ggplot2)
 library(pROC)
+library(reshape2)
 ```
 
 
 
 ```{r}
 # Read the Excel file into a data frame
-data = read_excel("/data/Data.csv")
+data = read_excel("/Users/vita/Desktop/Data.csv")
 ```
 
 
@@ -162,8 +163,7 @@ selected_variables1 <- data[c('n_fam_members', 'n_under_age10', 'seoul_metro_are
 # remove 'WORK_GIVEUP'(categorical vari, so the number has no meaning)
 cor_matrix1 <- cor(selected_variables1, use = "complete.obs")
 
-library(ggplot2)
-library(reshape2)
+
 
 melted_cor_matrix1 <- melt(cor_matrix1)
 ggplot(melted_cor_matrix1, aes(Var1, Var2, fill=value)) + 
@@ -172,8 +172,8 @@ ggplot(melted_cor_matrix1, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
-        axis.text.y = element_text(size = 10))  + 
+     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5))  + 
     labs(title = "Heat Map - Work-Related", x = '', y = '')
 ```
 
@@ -202,8 +202,8 @@ ggplot(melted_cor_matrix1_2, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
-        axis.text.y = element_text(size = 10))  + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5))  + 
 # Adjust the size here for y axis
     labs(title = "Heat Map - Work-Related(between working people)", x = '', y = '')
 ```
@@ -225,8 +225,8 @@ ggplot(melted_cor_matrix2, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
-        axis.text.y = element_text(size = 6))  + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5))  + 
 # Adjust the size here for y axis
     labs(title = "Heat Map - House-Related", x = '', y = '')
 
@@ -257,8 +257,8 @@ ggplot(melted_cor_matrix3, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
-        axis.text.y = element_text(size = 6)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5)) + 
    labs(title = "Heat Map - Social-Related", x = '', y = '') +
   theme(plot.title = element_text(size = 10))
 ```
@@ -278,8 +278,8 @@ ggplot(melted_cor_matrix3_mom, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
-        axis.text.y = element_text(size = 6)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5)) + 
    labs(title = "Heat Map - Social-Related(mom)", x = '', y = '') +
   theme(plot.title = element_text(size = 10))
 
@@ -309,8 +309,8 @@ ggplot(melted_cor_matrix3_dad, aes(Var1, Var2, fill=value)) +
                          midpoint = 0, limit = c(-1,1), space = "Lab", 
                          name="Pearson\nCorrelation") +
     theme_minimal() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
-        axis.text.y = element_text(size = 6)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5), 
+        axis.text.y = element_text(size = 5)) + 
    labs(title = "Heat Map - Social-Related(dad)", x = '', y = '') +
   theme(plot.title = element_text(size = 10))
 ```
@@ -659,13 +659,13 @@ data_test$predicted_class = ifelse(gbm_prob > 0.5, 1, 0)
 # 1. Histogram of Predicted Probabilities
 ggplot(data_test, aes(x = predicted_prob)) +
   geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
-  labs(title = "Histogram of Predicted Probabilities", x = "Predicted Probability", y = "Frequency")
+  labs(title = "Histogram of Predicted Prob", x = "Predicted Probability", y = "Frequency")
 
 # 2. Density Plot by Actual Class
 ggplot(data_test, aes(x = predicted_prob, fill = as.factor(n_under_age10))) +
   geom_density(alpha = 0.5) +
-  labs(title = "Density Plot of Birth Rate Predictions - GBM",
-       x = "Predicted Probability of Having Children Under Age 10",
+  labs(title = "Density Plot of Birth Rate Predict - GBM",
+       x = "Predicted Prob of Having Children Under Age 10",
        y = "Density",
        fill = "Actual Class")
 
@@ -701,13 +701,13 @@ data_test$predicted_prob_lm <- final_predictions_lm
 # Visualize the predicted probabilities
 ggplot(data_test, aes(x = predicted_prob_lm)) +
   geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
-  labs(title = "Histogram of Predicted Probabilities - LM", x = "Predicted Probability", y = "Frequency")
+  labs(title = "Histogram of Predicted Prob - LM", x = "Predicted Probability", y = "Frequency")
 
 # Visualize the density plot by actual class
 ggplot(data_test, aes(x = predicted_prob_lm, fill = as.factor(n_under_age10))) +
   geom_density(alpha = 0.5) +
-  labs(title = "Density Plot of Birth Rate Predictions - Linear",
-       x = "Predicted Probability of Having Children Under Age 10",
+  labs(title = "Density Plot of Birth Rate Predict-LM",
+       x = "Predicted Prob of Having Children Under Age 10",
        y = "Density",
        fill = "Actual Class")
 
