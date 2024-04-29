@@ -63,7 +63,7 @@ features = df.drop(['n_under_age10', 'n_fam_members', 'region', 'GENDER_RESP', '
 target = df['n_under_age10']
 ```
 
-When we started testing the neural network, we found that the results were too random because the dataset was too small, so we decided to calculate the average contribution of multiple runs.
+When we started testing the neural network, we found that the results were too random because the dataset was too small. 
 ```
 # Initialize SHAP explainer with the model prediction function and a sample of the transformed data
 explainer = shap.KernelExplainer(f, X_transformed)
@@ -77,5 +77,6 @@ if isinstance(expected_value, np.ndarray):
     expected_value = expected_value[0] 
 shap.decision_plot(expected_value, shap_values, X_transformed[:100], feature_names=feature_names)
 ```
+So we decided to calculate the average contribution of multiple runs.
 
 Ultimately, we used SHAP value and decision plot to display the average value after running 100 times neural network and their contributions to final output.
