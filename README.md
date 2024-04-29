@@ -5,7 +5,7 @@ Reproduction
 
 We used two different languages to complete the project: R and python. 
 
-For R part, please follow the [Project_0429.Rmd](./data/Project_0429.Rmd) file in repository and use the dataset [Data.csv](./data/Data.csv) in data folder. The packages used are as follow:
+For R part, please follow the [Project_0429.Rmd](./Project_0429.Rmd) file in repository and use the dataset [Data.csv](./data/Data.csv) in data folder. The packages used are as follow:
 ```
 library(readxl)
 library(dplyr)
