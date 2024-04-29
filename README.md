@@ -55,7 +55,13 @@ for col in df.columns:
         df[col].fillna(CATEGORICAL_FILL, inplace=True)
 ```
 Then we dropped some variables in order to reduce distractions and build the neural network framework then build evaluation function to test the model.
+```
+# Split features and target
+features = df.drop(['n_under_age10', 'n_fam_members', 'region', 'GENDER_RESP', 'AGE_RESP', 'HOUSE_TYPE', 'HOUSE_TYPE2', 'working_status', 'reason_not_working', 'working_field', 'unique_identifier', 'REASON_TIRED2', ], axis=1)
+target = df['n_under_age10']
+```
 
 When we started testing the neural network, we found that the results were too random because the dataset was too small, so we decided to calculate the average contribution of multiple runs.
+
 
 Ultimately, we used SHAP value and decision plot to display the average value after running 100 times neural network and their contributions to final output.
