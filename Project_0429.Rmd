@@ -35,7 +35,7 @@ library(reshape2)
 
 ```{r}
 # Read the Excel file into a data frame
-data = read_excel("/Users/vita/Desktop/Data.csv")
+data = read_excel("./data/Data.csv")
 ```
 
 
