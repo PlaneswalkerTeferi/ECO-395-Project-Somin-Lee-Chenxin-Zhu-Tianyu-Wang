@@ -1,0 +1,722 @@
+---
+title: "Analysis on Korean low birth rate, based on 2019 survey"
+output:
+  pdf_document: default
+  html_document: default
+date: "Tianyu Wang, Somin Lee, ChenxinZhu 2024-04-29"
+---
+
+
+
+
+```{r}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(fig.width=3.6, fig.height=3)
+
+suppressPackageStartupMessages({
+  library(readxl)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(e1071)
+library(factoextra)
+library(readr)
+library(rpart)
+library(gbm)
+library(readr)
+library(osmdata)
+library(tidyverse)
+library(tidyr)
+library(rsample) 
+library(ggplot2)
+library(pROC)
+})
+```
+
+
+
+
+
+
+```{r}
+# Read the Excel file into a data frame
+data = read_excel("/Users/vita/Desktop/Data.csv")
+```
+
+
+
+
+
+# Abstract
+
+The research question is around: why Korean people don’t give birth? The report builds birth predicting models to look closely into the factors that affect the low birth rate in South Korea. It focus on the life of young people who are under 44 by using data from the national survey about time usage and lifestyle, because this can offer clues to understand why young people hesitate to have kids and what makes their life different from before when they don’t have kids. It looks at meaningful variables to affect birth rate using heat maps and neural network analysis and interprets the variables in terms of work, housing, and social-related based on the recent social policy and reality of Korea. Then the report make GBM, linear, and CART models to predict whether the households have kids or not and enhance the model by selecting variables. 
+
+# I. Introduction
+## 1.1 Background and Motivation
+  “Korea is so screwed! Wow, I’ve never heard of that low fertility rate, 0.78(%)” Joan C. Wiliams, Professor of Law at  UC Law San Francisco said in an interview by EBS(Korea Educational Broadcasting System).
+  
+![Alt text](/Users/vita/Desktop/01.png)
+
+  East Asian countries such as China, Japan, and Taiwan show a lower birth rate (also known as fertility rate) than most other countries. The birth rate has decreased in most developed countries over the years, but the recent plunge in some Asian countries has attracted attention.
+Above all, the birth rate in South Korea hit the lowest 0.78% in 2021; it is even less than half of the US birth rate, 1.66%. It was quite shocking not only to Koreans but also to Joan C. Wiliams, who is a professor of law at UC Law San Francisco, and her response in disbelief to the birth rate has gone viral in Korea.
+
+  Due to the shocking number, the Korean government has tried to raise the birth rate, but it is only the beginning step, such as giving a subsidy. It should be identified why people don’t give birth to successfully raise the birth rate, and that’s the reason why we need to take a close look at the real lives of parents and non-parents.
+
+## 1.2  Research question
+  There are many surveys to identify why current young people don't have a baby. However, just asking why you do not have kids is so direct and limited that we can not catch the important reasons between the answers.	
+  
+  That’s why we identify what is different between families with kids and without kids by selecting meaningful variables and making birth rate predicting models using data about lifestyle.  Even though the models are designed to predict, their explanatory variables represent the differences between the exogenous families who have babies or not, and that could be a good starting point for making policies to improve the birth rate.
+
+# II. Method
+## 2.1 Data set description
+  The data from the Time Use Survey in South Korea, which is for understanding people's lifestyle and quality of life by measuring how people spend their time, is used in this analysis. It was conducted by Statistic Korea, a government agency, in 2019, and microdata is also provided by the agency on request.
+We use data from married couples only, and the age of respondents is restricted under age 44 because we consider families with kids under 10, and the average age of women giving birth is 33.
+
+```{r}
+# Step 1: Data Preprocessing
+# 1.1 Handling missing values
+# For numerical variables
+# For categorical variables
+# missing values are meaningful
+
+# 1.2 Encode categorical variables
+names(data)[names(data) == "both_don¡¯t_work"] <- "both_dont_work"
+data = data %>%
+  filter(AGE_RESP<44)%>%
+  mutate(
+    seoul_metro_area =  ifelse(seoul_metro_area == "Y", 1, 0),
+    live_toge_couple = ifelse(live_toge_couple == "Y", 1, 0),
+    both_work = ifelse(both_work == "Y", 1, 0),
+    only_man_works = ifelse(only_man_works == "Y", 1, 0),
+    only_woman_works = ifelse(only_woman_works == "Y", 1, 0),
+    both_dont_work = ifelse(both_dont_work == "Y", 1, 0)
+    # Continue with other preprocessing...
+  )
+```
+
+```{r}
+# Step 2: Exploratory Data Analysis (EDA) - to see how the research question can be?  
+
+# Distribution of children under age 10
+ggplot(data, aes(x = n_under_age10)) +
+  geom_bar() +
+  labs(title = "Distribution of Children Under Age 10", x = "Number of Children", y = "Frequency")
+
+```
+
+## 2.3 Methods for Data Processing
+### 2.3.1 Data Acquisition and Preprocessing
+  Handling of missing data was carried out, with separate strategies for numerical and categorical variables. Missing values were treated as meaningful, suggesting that the absence of data might itself be informative. Categorical variables were encoded as binary variables, facilitating the use of these predictors in modeling. This step involved converting categorical variables indicating yes/no responses to binary (1/0) representations.
+  
+### 2.3.2 Variable Selection
+  We first use several heatmaps and neural networks to do variable selection, which can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates.
+  
+	With heatmap, we set a threshold for significant correlation: A threshold value of 0.1, which is the cutoff for considering a correlation to be significant. Correlations with an absolute value greater than this threshold with 'n_under_age10' will be selected.
+
+### 2.3.3 Model Building and Evaluation
+  After variable selection, use different models including CART, GBM, and linear model to see which model has the better performance on the testing data, evaluating and comparing by RMSE. 
+  
+  Also, ROC curves and AUC statistics were generated for the models, providing a measure of their discriminative ability for the classification task.
+
+### 2.3.4 Model Selection & Predictions
+  Based on performance metrics, the best models were selected for making final predictions, and see how each prediction behaves. The selected models were used to make final predictions on the test data. Predicted probabilities and classes were visualized using histograms, density plots, and bar charts to understand the model's performance.
+
+
+```{r}
+# Binarize predictions 
+# 
+data1 = data %>%
+  mutate(
+    n_under_age10 = ifelse(data$n_under_age10 =='0', 0, 1)
+    # Continue with other preprocessing...
+  )
+
+# Distribution of whether have children - hide
+# ggplot(data1, aes(x = n_under_age10)) +
+#  geom_bar() +
+#  labs(title = "Distribution of Children Under Age 10", x = "Have children or not", y = "Frequency")
+
+```
+
+
+# III. Results 
+## 3.1 Heatmap for Variable Selection
+	Heatmaps can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates. The analysis revealed distinct patterns in the correlation heatmaps across the three key domains of interest: which are categorized into work-related, house-related, and subjective life satisfaction & other features. 
+
+
+### 3.1.1 A. Work-related
+In the work-related heatmap, certain variables exhibited strong positive correlations, particularly between the different work status categories, suggesting a clear differentiation in the employment types within our dataset. 
+
+```{r}
+# Step 3: Variation Selection, Heatmap of Correlations
+# Heat Map 1 - Related to Working 
+library(tidyverse)
+library(pheatmap)
+
+# Assuming 'n_fam_members' and 'n_under_age10' are of interest, among others
+
+
+selected_variables1 <- data[c('n_fam_members', 'n_under_age10', 'seoul_metro_area','live_toge_couple','both_work','only_man_works', 'only_woman_works', 'both_dont_work','working_status','reason_not_working')] 
+# remove 'WORK_GIVEUP'(categorical vari, so the number has no meaning)
+cor_matrix1 <- cor(selected_variables1, use = "complete.obs")
+
+library(ggplot2)
+library(reshape2)
+
+melted_cor_matrix1 <- melt(cor_matrix1)
+ggplot(melted_cor_matrix1, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
+        axis.text.y = element_text(size = 10))  + 
+    labs(title = "Heat Map - Work-Related", x = '', y = '')
+```
+### B. Work-related: Comparison between working people
+Additionally, we analyze only the people whose working status is yes. When it comes to working time, we can divide it into two parts. 
+
+First, working_time(1:full time, 2:part time) represents the stability of a job. The labor market of Korea is not as elastic as the US, so shifting from a part-time to a full-time job is difficult, so a full-time job means a more stable source of income than a part-time job and people having a full-time job are more likely to have kids.
+
+Second, working and side job work time show different correlations with having kids. Longer working time usually leads to more labor income so it is positively correlated. However, a side job means they are demanded to work more so it can be interpreted as instability of economic status. So, we think side job working hours have a negative correlation.
+
+
+```{r}
+# Heat Map 1-(2) - work related- compare between working people
+data_working=data%>%
+  filter(working_status==1)
+
+selected_variables1_2 <- data_working[c('n_fam_members', 'n_under_age10', 'working_status', 'working_time', 'weekly_worktime', 'week_sidejob_worktime', 'dayoff_type')]
+cor_matrix1_2 <- cor(selected_variables1_2, use = "complete.obs")
+
+melted_cor_matrix1_2 <- melt(cor_matrix1_2)
+ggplot(melted_cor_matrix1_2, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
+        axis.text.y = element_text(size = 10))  + 
+# Adjust the size here for y axis
+    labs(title = "Heat Map - Work-Related(between working people)", x = '', y = '')
+```
+
+### 3.1.2 Housing-related
+The house-related heatmap displayed a varied correlation landscape, with household income showing a notable correlation with house size, indicating an expected relationship between income and living space. Just live_toge_couple has some correlations.
+
+```{r}
+# Heat Map 2 - Related to House
+
+selected_variables2 <- data1[c('n_fam_members', 'n_under_age10', 'live_toge_couple', 'HOUSE_TYPE', 'HOUSE_SQ_METER', 'HOUSE_RENT', 'HOUSEHOLD_INC')]
+cor_matrix2 <- cor(selected_variables2, use = "complete.obs")
+
+melted_cor_matrix2 <- melt(cor_matrix2)
+ggplot(melted_cor_matrix2, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
+        axis.text.y = element_text(size = 6))  + 
+# Adjust the size here for y axis
+    labs(title = "Heat Map - House-Related", x = '', y = '')
+
+# a= data%>%
+#  summarize(counttest=count(HOUSEHOLD_INC))
+```
+
+In terms of households with kids, household income shows a negative correlation with having kids, and it can be regarded as the opposite of the positive correlation with working hours. However, income includes not only labor income but also other non-labor income, so economic affluence does not necessarily guarantee having more babies.
+ 
+House rent (type) also gives us an interesting point. The bigger the number of house rents (code), the less stability in housing; for example, “house rent =1” represents owning a house, but as the number gets bigger, it becomes renting a house with a lower deposit and a higher monthly rent.
+
+In Korea, rent is differentiated by the amount of deposit, and people prefer to lower their monthly rent by paying a larger deposit. Because it means they have enough money to pay a large amount of money that is closely related to the ability and credit of the tenant. Therefore, the negative correlation between house rent and the number of kids shows the importance of housing stability for the birth rate.
+
+### 3.1.3  Social-related
+The heatmap concerning subjective life satisfaction & others highlighted some intriguing relationships, such as a significant correlation between education level and life satisfaction, potentially alluding to the broader impact of education on the perceived quality of life. Conversely, the heatmaps also unveiled areas with minimal or negative correlations, guiding further inquiry into factors that might contribute to these inverse relationships. 
+
+```{r}
+# Heat Map 3 - Life subjective evaluation & Social aspect
+
+selected_variables3 <- data1[c('n_fam_members', 'n_under_age10','SATIS_LIFE', 'SATIS_LEISURE', 'SATIS_HOUWORK_DIVISION', 'GENDER_RESP', 'AGE_RESP', 'GENDER_ROLE', 'health_status', 'edu_level', 'dayoff_type',   'TIME_SHORTAGE')]
+cor_matrix3 <- cor(selected_variables3, use = "complete.obs")
+
+melted_cor_matrix3 <- melt(cor_matrix3)
+ggplot(melted_cor_matrix3, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
+        axis.text.y = element_text(size = 6)) + 
+   labs(title = "Heat Map - Social-Related", x = '', y = '') +
+  theme(plot.title = element_text(size = 10))
+```
+```{r}
+data_mom = data%>%
+  filter(GENDER_RESP==2)
+
+# Heat Map 3-(2) - Life subjective evaluation & Social aspect only for woman repondent
+
+selected_variables3_mom <- data_mom[c('n_fam_members', 'n_under_age10','SATIS_LIFE', 'SATIS_LEISURE', 'SATIS_HOUWORK_DIVISION', 'GENDER_RESP', 'AGE_RESP', 'GENDER_ROLE', 'health_status', 'edu_level', 'dayoff_type',   'TIME_SHORTAGE')]
+cor_matrix3_mom <- cor(selected_variables3_mom, use = "complete.obs")
+
+melted_cor_matrix3_mom <- melt(cor_matrix3_mom)
+ggplot(melted_cor_matrix3_mom, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
+        axis.text.y = element_text(size = 6)) + 
+   labs(title = "Heat Map - Social-Related(mom)", x = '', y = '') +
+  theme(plot.title = element_text(size = 10))
+
+```
+
+We figure out three variables: education level, leisure, and time shortage. First, education level shows a negative correlation with kids, so it breaks the stereotype that the more educated, the less likely you are to have kids. 
+
+The satisfaction of leisure is positively correlated with kids, and it seems counterintuitive. Even though the definition of leisure could be a little ambiguous, parents with kids have higher satisfaction with leisure time. It represents that having kids does not necessarily deteriorate parents’ leisure time, they can enjoy family leisure together.
+
+Lastly, time shortages are negatively correlated with having kids, it means that parents feel their time is less abundant than a married couple without kids. It shows that looking after kids is such a time-consuming and labor-intensive job.
+
+Then, when we more closely look at the results by gender, the difference is detected in the satisfaction of life and gender roles.
+```{r}
+data_dad = data%>%
+  filter(GENDER_RESP==1)
+
+# Heat Map 3-(2) - Life subjective evaluation & Social aspect only for man repondent
+
+selected_variables3_dad <- data_dad[c('n_fam_members', 'n_under_age10','SATIS_LIFE', 'SATIS_LEISURE', 'SATIS_HOUWORK_DIVISION', 'GENDER_RESP', 'AGE_RESP', 'GENDER_ROLE', 'health_status', 'edu_level', 'dayoff_type',   'TIME_SHORTAGE')]
+cor_matrix3_dad <- cor(selected_variables3_dad, use = "complete.obs")
+
+melted_cor_matrix3_dad <- melt(cor_matrix3_dad)
+ggplot(melted_cor_matrix3_dad, aes(Var1, Var2, fill=value)) + 
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6), 
+        axis.text.y = element_text(size = 6)) + 
+   labs(title = "Heat Map - Social-Related(dad)", x = '', y = '') +
+  theme(plot.title = element_text(size = 10))
+```
+
+Fathers’ satisfaction with life seems neutral to kids, close to zero, but that of mothers increases as they have kids (the smaller the number, the more satisfied with life). It shows women’s life satisfaction is more positively related to their kids than men's, and when men disagree on the gender role, which reflects the traditional role allocation such as “man works outside, woman cares for home,"  the married couple is more likely to have children.
+
+Overall, these visualizations provided a groundwork for identifying variables that might influence each other and warranted further examination in our subsequent analyses. The next step is to set a threshold and exclude some factors that have little or no influence on birth rates.
+
+
+## 3.2 Threshold Setting & Filtering for Variable Selection
+	With heatmap and threshold filtering: For the work-related category, the selected variable is "reason_not_working". For the house-related category, just the ‘live_toge_couple’ variable is selected, which might indicate that although the fortune status can be related to working status, but not directly related to real estate holdings. For the social-related category,  selected variables are "SATIS_LIFE",  "edu_level", and "health_status".
+	
+
+```{r}     
+# Variable Selection
+# After Heatmap: Selection 1
+# Load necessary library
+library(dplyr)
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars1 <- cor_matrix1 %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# significant_vars1
+```
+
+```{r}     
+# Variable Selection
+# After Heatmap: Selection 1_2
+# Load necessary library
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars1_2 <- cor_matrix1_2 %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# significant_vars1_2
+```
+
+```{r}     
+# Selection 2
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars2 <- cor_matrix2 %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# The variable 'significant_vars' now contains the names of variables significantly correlated with birth rate.
+```
+
+```{r}     
+# Selection 3
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars3 <- cor_matrix3 %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# The variable 'significant_vars' now contains the names of variables significantly correlated with birth rate.
+
+```
+
+```{r}     
+# Selection 3_1
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars3_1 <- cor_matrix3_dad %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# The variable 'significant_vars' now contains the names of variables significantly correlated with birth rate.
+```
+```{r}     
+# Selection 3_2
+# Set a threshold for significant correlation
+threshold <- 0.1
+# Find variables with significant correlation to 'birth_rate'
+significant_vars3_2 <- cor_matrix3_mom %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "variable") %>%
+  filter(abs(n_under_age10) > threshold) %>%
+  `$`(variable)
+
+# The variable 'significant_vars' now contains the names of variables significantly correlated with birth rate.
+
+```
+
+
+## 3.3 Variable Selection by Neutral Network
+
+![Alt text](/Users/vita/Desktop/02.png)
+In this section, we use neural networks as a means of filtering variables. We manually eliminated some of the variables that we thought would be noisy, such as region and reason_not_working, to reduce the probability of overfitting the model. We built a three-layer neural network, the first layer acquires the dataset and outputs 128 features, the second layer reduces the number of features from 128 to 64, and the third layer outputs a single value. The reason why we only built a simple three-layer neural network is the too narrow dataset. We chose ReLU as the activation function. 
+    
+We then use the SHAP Decision plot as a visual interpretation of the model. We used the neural network to fit 100 times and calculate the SHAP value of each prediction separately, then averaged to hedge the randomness of the model output caused by the small data set, and finally used the decision plot to show the degree of influence of the variable on the output result. 
+    
+From the top to bottom,  we could see that SATIS_LEISURE(Satisfaction to leisure life), TIME_SHROTAGE(busy or not, 5 levels), and edu_level(education level) have greater effects compared with the other variables. 
+
+
+
+```{r}
+# Step 3: Model building
+# 3.1 Splitting the dataset
+data_split = initial_split(data1, prop = 0.8)
+data_train = training(data_split)
+data_test  = testing(data_split)
+
+# Use what learned from Problem Set 3 
+# Assuming 'n_under_age10' is target variable and excluding two predictors as an example
+# Model training with exclusion of certain variables, for example, unique identifiers or direct outcome variables
+
+# Remove specified variables from the dataset - those explanatory columns
+
+# Model training with adjusted predictor variables
+# a. CART model
+cart_model <- rpart(n_under_age10 ~ . - HOUSE_TYPE2 - HOUSE_RENT2 - WORK_GIVEUP2 - REASON_TIRED2 - working_field - position_type, data = data_train, method = "anova")
+
+# b. Gradient Boosting Model
+gbm_model <- gbm(n_under_age10 ~ . - HOUSE_TYPE2 - HOUSE_RENT2 - WORK_GIVEUP2 - REASON_TIRED2 - working_field - position_type , data = data_train, distribution = "gaussian", n.trees = 500, interaction.depth = 4, shrinkage = 0.01)
+
+# c. Linear Model
+lm_model <- lm(n_under_age10 ~ - HOUSE_TYPE2 - HOUSE_RENT2 - WORK_GIVEUP2 - REASON_TIRED2 - working_field - position_type, data = data_train)
+
+```
+
+# 3.3 Model Comparison
+## 3.3.1 RMSE Enhancement 
+After variable selection, the LM model is the best model with the lowest RMSE. The RMSE does not show much improvement, which might be because of overfitting reduction. Without variable selection, models may have access to more information and could potentially overfit the data, especially complex models like GBM (Gradient Boosting Machine). Overfitting occurs when the model learns the noise in the training data instead of the actual signal, leading to lower performance on unseen data. Variable selection helps by removing irrelevant features, which may lead to a better generalization and, thus, better performance on the test set. Next step is to do model selection under different criteria.
+
+
+```{r}
+# Step 4: Model evaluation
+predictions_cart <- predict(cart_model, newdata = data_test)
+predictions_gbm <- predict(gbm_model, newdata = data_test, n.trees = 500)
+predictions_lm <- predict(lm_model, newdata = data_test)
+
+# Calculate RMSE for each model
+rmse_cart <- sqrt(mean((data_test$n_under_age10 - predictions_cart)^2))
+rmse_gbm <- sqrt(mean((data_test$n_under_age10 - predictions_gbm)^2))
+rmse_lm <- sqrt(mean((predictions_lm - data_test$n_under_age10)^2, na.rm = TRUE))
+
+print(paste("CART RMSE:", rmse_cart))
+print(paste("Gradient Boosting RMSE:", rmse_gbm))
+print(paste("LM RMSE:", rmse_lm))
+# Assuming rmse_cart, rmse_gbm, rmse_lm are previously defined with the RMSE values
+metrics <- data.frame(Model = c('CART', 'GBM', 'Linear'), 
+                      RMSE = c(rmse_cart, rmse_gbm, rmse_lm))
+
+# Visualization
+metrics$Model <- factor(metrics$Model, levels = c('CART', 'GBM', 'Linear'))
+
+ggplot(metrics, aes(x = Model, y = RMSE, fill = Model)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c('lightblue','blue', 'purple')) + # Set the colors
+  labs(title = "Model Comparison 1 by RMSE", x = "Model", y = "RMSE") +
+  theme_minimal() +
+  theme(legend.title = element_blank()) 
+
+# Based on the RMSE values:
+# The Gradient Boosting Model has the lowest RMSE, indicating it performed the best among the three models for the data.The CART model comes next.The Linear Model has the highest RMSE, making it the least accurate in this case.
+
+```
+
+
+```{r}
+# Step 4: Model evaluation for selected variables
+
+# With selected variables from Heatmap + Neural Networks
+
+# Model training with adjusted predictor variables
+# a. CART model
+cart_model2 <- rpart(n_under_age10 ~ reason_not_working + SATIS_LEISURE + edu_level + health_status + live_toge_couple + TIME_SHORTAGE + dayoff_type + HOW_TIRED, data = data_train, method = "anova")
+
+# b. Gradient Boosting Model
+gbm_model2 <- gbm(n_under_age10 ~ reason_not_working + SATIS_LEISURE + edu_level + health_status + live_toge_couple + TIME_SHORTAGE + dayoff_type + HOW_TIRED, data = data_train, distribution = "gaussian", n.trees = 500, interaction.depth = 4, shrinkage = 0.01)
+
+# c. Linear Model
+lm_model2 <- lm(n_under_age10 ~ reason_not_working + SATIS_LEISURE + edu_level + health_status + live_toge_couple + TIME_SHORTAGE + HOW_TIRED, data = data_train)
+
+```
+
+
+
+```{r}
+# Model evaluation after Valuation Selection
+predictions_cart2 <- predict(cart_model2, newdata = data_test)
+predictions_gbm2 <- predict(gbm_model2, newdata = data_test, n.trees = 500)
+predictions_lm2 <- predict(lm_model2, newdata = data_test)
+
+# Calculate RMSE for each model
+rmse_cart2 <- sqrt(mean((data_test$n_under_age10 - predictions_cart2)^2))
+rmse_gbm2 <- sqrt(mean((data_test$n_under_age10 - predictions_gbm2)^2))
+rmse_lm2 <- sqrt(mean((predictions_lm2 - data_test$n_under_age10)^2, na.rm = TRUE))
+
+print(paste("CART RMSE:", rmse_cart2))
+print(paste("Gradient Boosting RMSE:", rmse_gbm2))
+print(paste("LM RMSE:", rmse_lm2))
+
+# Visualization
+metrics <- data.frame(Model = c('CART', 'GBM', 'Linear'), 
+                      RMSE = c(rmse_cart2, rmse_gbm2, rmse_lm2))
+
+# Set the factor levels to maintain the order of the bars
+metrics$Model <- factor(metrics$Model, levels = c('CART', 'GBM', 'Linear'))
+
+ggplot(metrics, aes(x = Model, y = RMSE, fill = Model)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c('lightblue', 'blue', 'purple')) + # Set the colors
+  labs(title = "Model Comparison 2 by RMSE", x = "Model", y = "RMSE") +
+  theme_minimal() +
+  theme(legend.title = element_blank()) # Remove legend title if desired
+
+# XX is the best, after variable selection
+```
+
+## 3.3.2 Confusion Matrix analysis
+From these matrices, the CART model seems to strike a better balance between identifying both classes correctly compared to the other models, but it also has a high FP rate. The high FP and FN across all models suggest there may be challenges with the models' classification abilities or with the inherent difficulty of the task.
+
+```{r}
+# Function to convert a confusion matrix to a dataframe for plotting
+confusion_to_dataframe <- function(cm) {
+  as.data.frame(cm$table)
+}
+
+# Confusion matrix_Cart
+cart_pred_class <- ifelse(predictions_cart2 > 0.5, 1, 0)
+# Now, create the confusion matrix
+cart_confusion <- confusionMatrix(as.factor(cart_pred_class), as.factor(data_test$n_under_age10))
+
+# Convert predictions to binary
+gbm_pred_class <- ifelse(predictions_gbm2 > 0.5, 1, 0)
+# Confusion matrix_GBM
+gbm_confusion <- confusionMatrix(as.factor(gbm_pred_class), as.factor(data_test$n_under_age10))
+ 
+# Convert predictions to binary
+lm_pred_class <- ifelse(predictions_lm2 > 0.5, 1, 0)
+# Confusion matrix
+lm_confusion <- confusionMatrix(as.factor(lm_pred_class), as.factor(data_test$n_under_age10))
+
+# Plotting function
+plot_confusion_matrix <- function(cm, title = "Confusion Matrix") {
+  df <- confusion_to_dataframe(cm)
+  ggplot(df, aes(Reference, Prediction, fill = Freq)) +
+    geom_tile() +
+    geom_text(aes(label = Freq), vjust = 1.5, color = "white") +
+    scale_fill_gradient(low = "blue", high = "red") +
+    labs(title = title, x = "Actual", y = "Predicted") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# Visualize each confusion matrix
+plot_confusion_matrix(cart_confusion, "CART Model Confusion Matrix")
+
+```
+```{r}
+plot_confusion_matrix(gbm_confusion, "GBM Model Confusion Matrix")
+```
+
+```{r}
+plot_confusion_matrix(lm_confusion, "Linear Model Confusion Matrix")
+```
+
+# 3.3.3 AUC-ROC curves analysis
+Overall, the Linear Model is likely the best choice among the three given its higher AUC score and its higher predictive accuracy as reflected in the confusion matrix. The Linear Model stands out with the highest AUC score, which indicates a superior ability to distinguish between the positive and negative classes compared to the other two models. Despite having fewer predictions, those it makes are more likely to be correct.
+
+```{r}
+# Also Model Evaluation
+
+# Function to plot ROC curve and calculate AUC
+plot_roc_curve <- function(actual, predicted, model_name) {
+  roc_obj <- roc(actual, predicted)
+  auc_val <- auc(roc_obj)
+  plot(roc_obj, main = paste(model_name, "ROC Curve (AUC =", round(auc_val, 2), ")"))
+  return(auc_val)
+}
+
+cart_model_classification <- rpart(
+  n_under_age10 ~ reason_not_working + SATIS_LEISURE + edu_level + health_status + live_toge_couple + TIME_SHORTAGE + dayoff_type + HOW_TIRED,
+  data = data_train,
+  method = "class"
+)
+
+# Calculate probabilities for CART
+cart_prob <- predict(cart_model_classification, data_test, type = "prob")[,2]
+auc_cart <- plot_roc_curve(data_test$n_under_age10, cart_prob, "CART")
+
+# Calculate probabilities for GBM
+gbm_prob <- predict(gbm_model2, data_test, n.trees = 500, type = "response")
+auc_gbm <- plot_roc_curve(data_test$n_under_age10, gbm_prob, "GBM")
+
+# Since LM is not a classifier, we use the raw output
+auc_lm <- plot_roc_curve(data_test$n_under_age10, predictions_lm2, "Linear Model")
+```
+
+
+# IV. Using selected models to do prediction
+To better see how different models behave when prediction, we do not fix on one model to do prediction, but do predict and then see which model can better do the prediction. Main conclusion: GBM is a better model here for the following reasons.
+
+The GBM model shows better separation between the classes with less overlap, indicating a higher confidence in distinguishing between households with and without children.
+The peak for Class 1 is much closer to 1, and for Class 0 closer to 0, which means the GBM model has a higher confidence level in its predictions.
+
+With the issue of low birth rates in Korea, a model like GBM that can better differentiate between households could be critical in targeting social support, optimizing resource allocation for child services, and planning community development.
+
+Regarding confidence and reliability, the GBM model appears to be more confident in its predictions, as shown by the higher peak and less overlap in the density plot, and would likely be more reliable in a real-world setting for making predictions about birth rates, which is essential for planning and policy-making.
+
+
+
+```{r}
+# Model Selection:
+# Choose the model with the best performance metrics, such as the highest AUC for classification tasks
+
+# Final predictions using the selected model
+
+final_predictions <- predict(gbm_model2, data_test, n.trees = 500, type = "response")
+final_class_predictions <- ifelse(final_predictions > 0.5, 1, 0)  # Assuming binary classification
+
+# Output predictions
+data_test$Predictions <- final_class_predictions
+write.csv(data_test, "Predicted_Outcomes.csv", row.names = FALSE)
+
+# Assuming 'gbm_prob' contains the predicted probabilities
+data_test$predicted_prob = gbm_prob
+data_test$predicted_class = ifelse(gbm_prob > 0.5, 1, 0)
+
+# 1. Histogram of Predicted Probabilities
+ggplot(data_test, aes(x = predicted_prob)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  labs(title = "Histogram of Predicted Probabilities", x = "Predicted Probability", y = "Frequency")
+
+# 2. Density Plot by Actual Class
+ggplot(data_test, aes(x = predicted_prob, fill = as.factor(n_under_age10))) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density Plot of Birth Rate Predictions - GBM",
+       x = "Predicted Probability of Having Children Under Age 10",
+       y = "Density",
+       fill = "Actual Class")
+
+# 3. Bar Chart of Predicted Classes
+ggplot(data_test, aes(x = as.factor(predicted_class))) +
+  geom_bar() +
+  scale_x_discrete(labels = c("0" = "No Children <10", "1" = "Children <10")) +
+  labs(title = "Bar Chart of Predicted Classes", x = "Predicted Class", y = "Count")
+
+# Render the plots
+dev.off()
+
+```
+
+```{r}
+# Predict with the linear model
+final_predictions_lm <- predict(lm_model2, data_test)
+
+# Convert predictions to binary classes
+final_class_predictions_lm <- ifelse(final_predictions_lm > 0.5, 1, 0)
+
+# Add the predictions to the data_test dataframe
+data_test$Predictions2 <- final_class_predictions_lm
+
+# Save the output to a CSV file
+write.csv(data_test, "Predicted_Outcomes_LM.csv", row.names = FALSE)
+
+# Since we are using a linear model, the predictions are continuous.
+# We can interpret them as probabilities if they are scaled between 0 and 1.
+# If the predictions are not between 0 and 1, we can use a logistic transformation or rescaling.
+data_test$predicted_prob_lm <- final_predictions_lm
+
+# Visualize the predicted probabilities
+ggplot(data_test, aes(x = predicted_prob_lm)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  labs(title = "Histogram of Predicted Probabilities - LM", x = "Predicted Probability", y = "Frequency")
+
+# Visualize the density plot by actual class
+ggplot(data_test, aes(x = predicted_prob_lm, fill = as.factor(n_under_age10))) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density Plot of Birth Rate Predictions - Linear",
+       x = "Predicted Probability of Having Children Under Age 10",
+       y = "Density",
+       fill = "Actual Class")
+
+# Visualize the bar chart of predicted classes
+ggplot(data_test, aes(x = as.factor(Predictions2))) +
+  geom_bar() +
+  scale_x_discrete(labels = c("0" = "No Children <10", "1" = "Children <10")) +
+  labs(title = "Bar Chart of Predicted Classes - LM", x = "Predicted Class", y = "Count")
+```
+
+
+
+# V. Conclusion
+The methodology adopted in this analysis involved deploying three distinct predictive models: CART, GBM, and Linear regression, to classify and predict outcomes in a binary setting. The most contributing explanatory variables help us understand the difference between households with kids and those without kids, and we can deduce implications for the policy for boosting fertility rates based on those variables. We split these into three parts: work, life, and economics-related.
+
+Firstly, when it comes to work, whether or not a woman works is more influential than whether a man does. It represents that the role of the mother is more significant in caring for kids, and the difference in weight in infant care between husband and wife makes women hesitate to have kids. Therefore, systematic support from firms for balancing the role of caring for kids is needed, and the government should induce that systemic change.
+Second, in the light of life, the cohabitation of a husband and wife and satisfaction with life are related to the birth rate. The stability of living with a spouse matters in the birth rate, so the relocation plan for public corporations and government ministries should be carefully developed considering the living conditions of people. The plan is to lower the concentration in the Seoul metropolitan area by the government.
+
+Also, it needs to change the recognition of life satisfaction. We can see that the satisfaction of leisure is higher with kids, but people usually think that having kids requires parents to give up their leisure. But parents can have family-oriented leisure with kids, and their satisfaction with it is not lower than in households without kids.
+Lastly, economic stability is crucial. Working hours and some house-related variables, such as house size, can be interpreted as economic states. But it does not necessarily mean that economic affluence is absolutely important. As we see before, stability seems more important than just higher income, and it might be related to the need to reserve time to care for children. 
+
+However, even though it shows the difference between households with kids or not, it does not necessarily show the causation of not having kids. It is just an analysis of the current state, but the government can support households with kids by a new policy to make them as free as households who don’t have kids based on the analysis and it can help people to recognize that having kids is not worse than not having kids. 
+
+
