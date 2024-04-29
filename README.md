@@ -42,7 +42,19 @@ import torch.nn as nn
 import torch.optim as optim
 import shap
 ```
-After importing packages, we cleaned the dataset. The NA values are populated as Missing and -999 for categorical value and numerical value seperately. Then we dropped some variables in order to reduce distractions and build the neural network framework then build evaluation function to test the model.
+After importing packages, we cleaned the dataset. The NA values are populated as Missing and -999 for categorical value and numerical value seperately.
+```
+NUMERICAL_FILL = -999
+CATEGORICAL_FILL = "Missing"
+
+# Impute missing values with different constants based on data type
+for col in df.columns:
+    if df[col].dtype in ['int64', 'float64']:  # For numerical columns
+        df[col].fillna(NUMERICAL_FILL, inplace=True)
+    elif df[col].dtype == 'object':  # For categorical columns
+        df[col].fillna(CATEGORICAL_FILL, inplace=True)
+```
+Then we dropped some variables in order to reduce distractions and build the neural network framework then build evaluation function to test the model.
 
 When we started testing the neural network, we found that the results were too random because the dataset was too small, so we decided to calculate the average contribution of multiple runs.
 
