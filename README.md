@@ -1,6 +1,7 @@
 # ECO-395-Project-Somin-Lee-Chenxin-zhu-Tianyu-Wang
 The project, co-authored by Somin Lee, Chenxin zhu and Tianyu Wang, aims to explore issues related to low fertility in South Korea. We analyzed the datasets and built models for comparison, and finally obtained a model with a good fit degree and analyzed the contribution of different variables to the model fit. Finally, the variables with high contribution degree are analyzed according to their practical significance, and their practical logic is found.
 
+See analysis report on [Project_0429.pdf](./Project_0429.pdf)
 Reproduction
 
 We used two different languages to complete the project: R and python. 
