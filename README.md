@@ -80,3 +80,5 @@ shap.decision_plot(expected_value, shap_values, X_transformed[:100], feature_nam
 So we decided to calculate the average contribution of multiple runs.
 
 Ultimately, we used SHAP value and decision plot to display the average value after running 100 times neural network and their contributions to final output.
+
+WARNING: The average SHAP value and SHAP decision plot code is time-consuming. Under discrete graphics card RTX 3060, the total running time is almost 2 hours.
