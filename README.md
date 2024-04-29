@@ -43,4 +43,7 @@ import torch.optim as optim
 import shap
 ```
 After importing packages, we cleaned the dataset. The NA values are populated as Missing and -999 for categorical value and numerical value seperately. Then we dropped some variables in order to reduce distractions and build the neural network framework then build evaluation function to test the model.
+
+When we started testing the neural network, we found that the results were too random because the dataset was too small, so we decided to calculate the average contribution of multiple runs.
+
 Ultimately, we used SHAP value and decision plot to display the average value after running 100 times neural network and their contributions to final output.
