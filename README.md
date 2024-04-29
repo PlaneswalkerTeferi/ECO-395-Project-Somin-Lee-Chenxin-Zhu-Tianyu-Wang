@@ -5,7 +5,7 @@ Reproduction
 
 We used two different languages to complete the project: R and python. 
 
-For R part, please follow the Project_0429.Rmd file in repository and use the dataset Data,csv in data folder.
+For R part, please follow the [Project_0429.Rmd](./data/Project_0429.Rmd) file in repository and use the dataset Data,csv in data folder.
 
 
 For python part, please run machinelearning_final.ipynb using the projectdata_new.csv in data folder. We have induced neural network to analyze and fit the data, and finally selected the top variables to combine with the variables selected by the traditional model for the final fit. We used the Pytorch framework, CUDA version 12.4.1, and the package is as follows:
