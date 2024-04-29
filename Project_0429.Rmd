@@ -3,7 +3,7 @@ title: "Analysis on Korean low birth rate, based on 2019 survey"
 output:
   pdf_document: default
   html_document: default
-date: "Tianyu Wang, Somin Lee, ChenxinZhu 2024-04-29"
+date: "Tianyu Wang, Somin Lee, Chenxin Zhu 2024-04-29"
 ---
 
 
