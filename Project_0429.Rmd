@@ -3,18 +3,15 @@ title: "Analysis on Korean low birth rate, based on 2019 survey"
 output:
   pdf_document: default
   html_document: default
-date: "Tianyu Wang, Somin Lee, Chenxin Zhu 2024-04-29"
+date: "Tianyu Wang, Somin Lee, ChenxinZhu 2024-04-29"
 ---
 
 
-
-
-```{r}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```{r setup, include=FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 knitr::opts_chunk$set(fig.width=3.6, fig.height=3)
 
-suppressPackageStartupMessages({
-  library(readxl)
+library(readxl)
 library(dplyr)
 library(ggplot2)
 library(caret)
@@ -31,11 +28,7 @@ library(tidyr)
 library(rsample) 
 library(ggplot2)
 library(pROC)
-})
 ```
-
-
-
 
 
 
@@ -54,23 +47,25 @@ The research question is around: why Korean people don’t give birth? The repor
 
 # I. Introduction
 ## 1.1 Background and Motivation
-  “Korea is so screwed! Wow, I’ve never heard of that low fertility rate, 0.78(%)” Joan C. Wiliams, Professor of Law at  UC Law San Francisco said in an interview by EBS(Korea Educational Broadcasting System).
+“Korea is so screwed! Wow, I’ve never heard of that low fertility rate, 0.78(%)” Joan C. Wiliams, Professor of Law at  UC Law San Francisco said in an interview by EBS(Korea Educational Broadcasting System).
   
 ![Alt text](/Users/vita/Desktop/01.png)
 
-  East Asian countries such as China, Japan, and Taiwan show a lower birth rate (also known as fertility rate) than most other countries. The birth rate has decreased in most developed countries over the years, but the recent plunge in some Asian countries has attracted attention.
+East Asian countries such as China, Japan, and Taiwan show a lower birth rate (also known as fertility rate) than most other countries. The birth rate has decreased in most developed countries over the years, but the recent plunge in some Asian countries has attracted attention.
 Above all, the birth rate in South Korea hit the lowest 0.78% in 2021; it is even less than half of the US birth rate, 1.66%. It was quite shocking not only to Koreans but also to Joan C. Wiliams, who is a professor of law at UC Law San Francisco, and her response in disbelief to the birth rate has gone viral in Korea.
 
-  Due to the shocking number, the Korean government has tried to raise the birth rate, but it is only the beginning step, such as giving a subsidy. It should be identified why people don’t give birth to successfully raise the birth rate, and that’s the reason why we need to take a close look at the real lives of parents and non-parents.
+Due to the shocking number, the Korean government has tried to raise the birth rate, but it is only the beginning step, such as giving a subsidy. It should be identified why people don’t give birth to successfully raise the birth rate, and that’s the reason why we need to take a close look at the real lives of parents and non-parents.
 
 ## 1.2  Research question
-  There are many surveys to identify why current young people don't have a baby. However, just asking why you do not have kids is so direct and limited that we can not catch the important reasons between the answers.	
+
+There are many surveys to identify why current young people don't have a baby. However, just asking why you do not have kids is so direct and limited that we can not catch the important reasons between the answers.	
   
-  That’s why we identify what is different between families with kids and without kids by selecting meaningful variables and making birth rate predicting models using data about lifestyle.  Even though the models are designed to predict, their explanatory variables represent the differences between the exogenous families who have babies or not, and that could be a good starting point for making policies to improve the birth rate.
+That’s why we identify what is different between families with kids and without kids by selecting meaningful variables and making birth rate predicting models using data about lifestyle.  Even though the models are designed to predict, their explanatory variables represent the differences between the exogenous families who have babies or not, and that could be a good starting point for making policies to improve the birth rate.
 
 # II. Method
 ## 2.1 Data set description
-  The data from the Time Use Survey in South Korea, which is for understanding people's lifestyle and quality of life by measuring how people spend their time, is used in this analysis. It was conducted by Statistic Korea, a government agency, in 2019, and microdata is also provided by the agency on request.
+
+The data from the Time Use Survey in South Korea, which is for understanding people's lifestyle and quality of life by measuring how people spend their time, is used in this analysis. It was conducted by Statistic Korea, a government agency, in 2019, and microdata is also provided by the agency on request.
 We use data from married couples only, and the age of respondents is restricted under age 44 because we consider families with kids under 10, and the average age of women giving birth is 33.
 
 ```{r}
@@ -107,20 +102,24 @@ ggplot(data, aes(x = n_under_age10)) +
 
 ## 2.3 Methods for Data Processing
 ### 2.3.1 Data Acquisition and Preprocessing
-  Handling of missing data was carried out, with separate strategies for numerical and categorical variables. Missing values were treated as meaningful, suggesting that the absence of data might itself be informative. Categorical variables were encoded as binary variables, facilitating the use of these predictors in modeling. This step involved converting categorical variables indicating yes/no responses to binary (1/0) representations.
+
+Handling of missing data was carried out, with separate strategies for numerical and categorical variables. Missing values were treated as meaningful, suggesting that the absence of data might itself be informative. Categorical variables were encoded as binary variables, facilitating the use of these predictors in modeling. This step involved converting categorical variables indicating yes/no responses to binary (1/0) representations.
   
 ### 2.3.2 Variable Selection
-  We first use several heatmaps and neural networks to do variable selection, which can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates.
+
+We first use several heatmaps and neural networks to do variable selection, which can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates.
   
-	With heatmap, we set a threshold for significant correlation: A threshold value of 0.1, which is the cutoff for considering a correlation to be significant. Correlations with an absolute value greater than this threshold with 'n_under_age10' will be selected.
+With heatmap, we set a threshold for significant correlation: A threshold value of 0.1, which is the cutoff for considering a correlation to be significant. Correlations with an absolute value greater than this threshold with 'n_under_age10' will be selected.
 
 ### 2.3.3 Model Building and Evaluation
-  After variable selection, use different models including CART, GBM, and linear model to see which model has the better performance on the testing data, evaluating and comparing by RMSE. 
+
+After variable selection, use different models including CART, GBM, and linear model to see which model has the better performance on the testing data, evaluating and comparing by RMSE. 
   
-  Also, ROC curves and AUC statistics were generated for the models, providing a measure of their discriminative ability for the classification task.
+Also, ROC curves and AUC statistics were generated for the models, providing a measure of their discriminative ability for the classification task.
 
 ### 2.3.4 Model Selection & Predictions
-  Based on performance metrics, the best models were selected for making final predictions, and see how each prediction behaves. The selected models were used to make final predictions on the test data. Predicted probabilities and classes were visualized using histograms, density plots, and bar charts to understand the model's performance.
+
+Based on performance metrics, the best models were selected for making final predictions, and see how each prediction behaves. The selected models were used to make final predictions on the test data. Predicted probabilities and classes were visualized using histograms, density plots, and bar charts to understand the model's performance.
 
 
 ```{r}
@@ -142,10 +141,12 @@ data1 = data %>%
 
 # III. Results 
 ## 3.1 Heatmap for Variable Selection
-	Heatmaps can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates. The analysis revealed distinct patterns in the correlation heatmaps across the three key domains of interest: which are categorized into work-related, house-related, and subjective life satisfaction & other features. 
+
+Heatmaps can visually demonstrate the correlation between different variables in the dataset, helping to identify which factors are most closely associated with birth rates. The analysis revealed distinct patterns in the correlation heatmaps across the three key domains of interest: which are categorized into work-related, house-related, and subjective life satisfaction & other features. 
 
 
 ### 3.1.1 A. Work-related
+
 In the work-related heatmap, certain variables exhibited strong positive correlations, particularly between the different work status categories, suggesting a clear differentiation in the employment types within our dataset. 
 
 ```{r}
@@ -175,7 +176,10 @@ ggplot(melted_cor_matrix1, aes(Var1, Var2, fill=value)) +
         axis.text.y = element_text(size = 10))  + 
     labs(title = "Heat Map - Work-Related", x = '', y = '')
 ```
+
+
 ### B. Work-related: Comparison between working people
+
 Additionally, we analyze only the people whose working status is yes. When it comes to working time, we can divide it into two parts. 
 
 First, working_time(1:full time, 2:part time) represents the stability of a job. The labor market of Korea is not as elastic as the US, so shifting from a part-time to a full-time job is difficult, so a full-time job means a more stable source of income than a part-time job and people having a full-time job are more likely to have kids.
@@ -205,6 +209,7 @@ ggplot(melted_cor_matrix1_2, aes(Var1, Var2, fill=value)) +
 ```
 
 ### 3.1.2 Housing-related
+
 The house-related heatmap displayed a varied correlation landscape, with household income showing a notable correlation with house size, indicating an expected relationship between income and living space. Just live_toge_couple has some correlations.
 
 ```{r}
@@ -236,6 +241,7 @@ House rent (type) also gives us an interesting point. The bigger the number of h
 In Korea, rent is differentiated by the amount of deposit, and people prefer to lower their monthly rent by paying a larger deposit. Because it means they have enough money to pay a large amount of money that is closely related to the ability and credit of the tenant. Therefore, the negative correlation between house rent and the number of kids shows the importance of housing stability for the birth rate.
 
 ### 3.1.3  Social-related
+
 The heatmap concerning subjective life satisfaction & others highlighted some intriguing relationships, such as a significant correlation between education level and life satisfaction, potentially alluding to the broader impact of education on the perceived quality of life. Conversely, the heatmaps also unveiled areas with minimal or negative correlations, guiding further inquiry into factors that might contribute to these inverse relationships. 
 
 ```{r}
@@ -286,6 +292,7 @@ The satisfaction of leisure is positively correlated with kids, and it seems cou
 Lastly, time shortages are negatively correlated with having kids, it means that parents feel their time is less abundant than a married couple without kids. It shows that looking after kids is such a time-consuming and labor-intensive job.
 
 Then, when we more closely look at the results by gender, the difference is detected in the satisfaction of life and gender roles.
+
 ```{r}
 data_dad = data%>%
   filter(GENDER_RESP==1)
@@ -314,7 +321,8 @@ Overall, these visualizations provided a groundwork for identifying variables th
 
 
 ## 3.2 Threshold Setting & Filtering for Variable Selection
-	With heatmap and threshold filtering: For the work-related category, the selected variable is "reason_not_working". For the house-related category, just the ‘live_toge_couple’ variable is selected, which might indicate that although the fortune status can be related to working status, but not directly related to real estate holdings. For the social-related category,  selected variables are "SATIS_LIFE",  "edu_level", and "health_status".
+
+With heatmap and threshold filtering: For the work-related category, the selected variable is "reason_not_working". For the house-related category, just the ‘live_toge_couple’ variable is selected, which might indicate that although the fortune status can be related to working status, but not directly related to real estate holdings. For the social-related category,  selected variables are "SATIS_LIFE",  "edu_level", and "health_status".
 	
 
 ```{r}     
@@ -446,6 +454,7 @@ lm_model <- lm(n_under_age10 ~ - HOUSE_TYPE2 - HOUSE_RENT2 - WORK_GIVEUP2 - REAS
 
 # 3.3 Model Comparison
 ## 3.3.1 RMSE Enhancement 
+
 After variable selection, the LM model is the best model with the lowest RMSE. The RMSE does not show much improvement, which might be because of overfitting reduction. Without variable selection, models may have access to more information and could potentially overfit the data, especially complex models like GBM (Gradient Boosting Machine). Overfitting occurs when the model learns the noise in the training data instead of the actual signal, leading to lower performance on unseen data. Variable selection helps by removing irrelevant features, which may lead to a better generalization and, thus, better performance on the test set. Next step is to do model selection under different criteria.
 
 
@@ -535,6 +544,7 @@ ggplot(metrics, aes(x = Model, y = RMSE, fill = Model)) +
 ```
 
 ## 3.3.2 Confusion Matrix analysis
+
 From these matrices, the CART model seems to strike a better balance between identifying both classes correctly compared to the other models, but it also has a high FP rate. The high FP and FN across all models suggest there may be challenges with the models' classification abilities or with the inherent difficulty of the task.
 
 ```{r}
@@ -583,6 +593,7 @@ plot_confusion_matrix(lm_confusion, "Linear Model Confusion Matrix")
 ```
 
 # 3.3.3 AUC-ROC curves analysis
+
 Overall, the Linear Model is likely the best choice among the three given its higher AUC score and its higher predictive accuracy as reflected in the confusion matrix. The Linear Model stands out with the highest AUC score, which indicates a superior ability to distinguish between the positive and negative classes compared to the other two models. Despite having fewer predictions, those it makes are more likely to be correct.
 
 ```{r}
@@ -616,6 +627,7 @@ auc_lm <- plot_roc_curve(data_test$n_under_age10, predictions_lm2, "Linear Model
 
 
 # IV. Using selected models to do prediction
+
 To better see how different models behave when prediction, we do not fix on one model to do prediction, but do predict and then see which model can better do the prediction. Main conclusion: GBM is a better model here for the following reasons.
 
 The GBM model shows better separation between the classes with less overlap, indicating a higher confidence in distinguishing between households with and without children.
@@ -709,6 +721,7 @@ ggplot(data_test, aes(x = as.factor(Predictions2))) +
 
 
 # V. Conclusion
+
 The methodology adopted in this analysis involved deploying three distinct predictive models: CART, GBM, and Linear regression, to classify and predict outcomes in a binary setting. The most contributing explanatory variables help us understand the difference between households with kids and those without kids, and we can deduce implications for the policy for boosting fertility rates based on those variables. We split these into three parts: work, life, and economics-related.
 
 Firstly, when it comes to work, whether or not a woman works is more influential than whether a man does. It represents that the role of the mother is more significant in caring for kids, and the difference in weight in infant care between husband and wife makes women hesitate to have kids. Therefore, systematic support from firms for balancing the role of caring for kids is needed, and the government should induce that systemic change.
